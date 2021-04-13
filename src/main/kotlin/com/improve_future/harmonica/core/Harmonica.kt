@@ -50,7 +50,7 @@ open class Harmonica(private val packageName: String, private val migrationTable
     /**
      * Down latest migrations
      */
-    fun down(db: Database) {
+    fun down(db: Database, applyCount: Int? = null) {
         val connection = ExposedConnection(db = db)
         try {
             val migrationVersion = versionService.findCurrentMigrationVersion(connection)
@@ -64,10 +64,10 @@ open class Harmonica(private val packageName: String, private val migrationTable
             val fileCandidateList: List<Class<out AbstractMigration>> =
                 allClasses.filter { it.simpleName.startsWith(migrationVersion) }
 
-            if (1 < allClasses.size)
+            if (1 < fileCandidateList.size)
                 throw Error("More then one files exist for migration $migrationVersion")
 
-            val clazz = fileCandidateList.first()
+            val clazz = allClasses.first()
 
             println("== [Start] Migrate down $migrationVersion ==")
             connection.transaction {
