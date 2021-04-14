@@ -56,9 +56,9 @@ task javadocJar(type: Jar) {
     archiveClassifier = 'javadoc'
 }
 
-group 'com.improve_future'
-//group 'com.github.icerockdev'
-version '1.1.26-local'
+//group 'com.improve_future'
+group 'com.github.icerockdev'
+version '1.1.26-local1'
 
 apply plugin: "com.gradle.plugin-publish"
 apply plugin: 'kotlin'
