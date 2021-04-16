@@ -81,6 +81,44 @@ class VersionService(private val migrationTableName: String) {
         )
     }
 
+    internal fun allListMigrationVersion(connection: ConnectionInterface): List<String> {
+        if (!connection.doesTableExist(migrationTableName)) return listOf()
+
+        val resultList = mutableListOf<String>()
+        val statement = connection.createStatement()
+        try {
+            val resultSet = when (connection.config.dbms) {
+                Dbms.Oracle -> {
+                    statement.executeQuery(
+                        """
+                        SELECT version
+                          FROM $migrationTableName
+                         ORDER BY version DESC
+                         """.trimIndent()
+                    )
+                }
+                else -> {
+                    statement.executeQuery(
+                        """
+                        SELECT version
+                          FROM $migrationTableName
+                         ORDER BY version DESC
+                         """.trimIndent()
+                    )
+                }
+            }
+            while (resultSet.next()) {
+                resultList.add(resultSet.getString(1));
+            }
+            resultSet.close()
+        } catch (e: Exception) {
+            throw e
+        } finally {
+            statement.close()
+        }
+        return resultList
+    }
+
     internal fun findListMigrationVersion(connection: ConnectionInterface, count: Int): List<String> {
         if (!connection.doesTableExist(migrationTableName)) return listOf()
 

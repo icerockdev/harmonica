@@ -48,46 +48,72 @@ open class Harmonica(private val packageName: String, private val migrationTable
     }
 
     /**
+     * Down all migrations
+     */
+    fun allDown(db: Database) {
+        val connection = ExposedConnection(db = db)
+        try {
+            val migrationVersionList = versionService.allListMigrationVersion(connection)
+
+            doMigration(migrationVersionList, connection)
+
+        } catch (e: Exception) {
+            throw e
+        } finally {
+            connection.close()
+        }
+    }
+
+    /**
      * Down latest migrations
      */
     fun down(db: Database, applyCount: Int = 1) {
         val connection = ExposedConnection(db = db)
         try {
             val migrationVersionList = versionService.findListMigrationVersion(connection, applyCount)
+            
+            doMigration(migrationVersionList, connection)
 
-            val reflections = Reflections(packageName)
-            val allClasses = reflections.getSubTypesOf(AbstractMigration::class.java)
-
-            if (allClasses.isEmpty())
-                return
-
-            for (migrationVersion in migrationVersionList) {
-                val fileCandidateList: List<Class<out AbstractMigration>> =
-                    allClasses.filter { it.simpleName.contains(migrationVersion) }
-
-                if (fileCandidateList.isEmpty())
-                    throw Error("Not found $migrationVersion")
-
-                if (1 < fileCandidateList.size)
-                    throw Error("More then one files exist for migration $migrationVersion")
-
-                val clazz = fileCandidateList.first()
-
-                println("== [Start] Migrate down $migrationVersion ==")
-                connection.transaction {
-                    val kClass = clazz.kotlin
-                    val migration: AbstractMigration = kClass.createInstance()
-
-                    migration.connection = connection
-                    migration.down()
-                    versionService.removeVersion(connection, migrationVersion)
-                }
-                println("== [End] Migrate down $migrationVersion ==")
-            }
         } catch (e: Exception) {
             throw e
         } finally {
             connection.close()
         }
+    }
+
+    private fun doMigration(
+        migrationVersionList: List<String>,
+        connection: ExposedConnection
+    ): Boolean {
+        val reflections = Reflections(packageName)
+        val allClasses = reflections.getSubTypesOf(AbstractMigration::class.java)
+
+        if (allClasses.isEmpty())
+            return true
+
+        for (migrationVersion in migrationVersionList) {
+            val fileCandidateList: List<Class<out AbstractMigration>> =
+                allClasses.filter { it.simpleName.contains(migrationVersion) }
+
+            if (fileCandidateList.isEmpty())
+                throw Error("Not found $migrationVersion")
+
+            if (1 < fileCandidateList.size)
+                throw Error("More then one files exist for migration $migrationVersion")
+
+            val clazz = fileCandidateList.first()
+
+            println("== [Start] Migrate down $migrationVersion ==")
+            connection.transaction {
+                val kClass = clazz.kotlin
+                val migration: AbstractMigration = kClass.createInstance()
+
+                migration.connection = connection
+                migration.down()
+                versionService.removeVersion(connection, migrationVersion)
+            }
+            println("== [End] Migrate down $migrationVersion ==")
+        }
+        return false
     }
 }

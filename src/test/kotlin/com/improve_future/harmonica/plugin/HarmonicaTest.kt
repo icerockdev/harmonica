@@ -115,4 +115,43 @@ class HarmonicaTest {
         )
 
     }
+
+    @Test
+    fun testDownAll() {
+        val dataBase = Database.connect(embeddedPostgres.postgresDatabase)
+        val harmonica = Harmonica(packageName = "com.improve_future.harmonica.plugin.migration")
+
+        harmonica.up(dataBase)
+        harmonica.allDown(dataBase)
+
+        val exception: Exception = assertThrows(PSQLException::class.java) {
+            transaction {
+                TransactionManager
+                    .current()
+                    .connection
+                    .createStatement()
+                    .execute("SELECT * FROM refresh_token_d".trimIndent())
+            }
+        }
+
+        val secondException: Exception = assertThrows(PSQLException::class.java) {
+            transaction {
+                TransactionManager
+                    .current()
+                    .connection
+                    .createStatement()
+                    .execute("SELECT * FROM refresh_token".trimIndent())
+            }
+        }
+
+        assertTrue(
+            "ERROR: relation \"refresh_token_d\" does not exist\n  Позиция: 15"
+                .contains(exception.message ?: "")
+        )
+        assertTrue(
+            "ERROR: relation \"refresh_token\" does not exist\n  Позиция: 15"
+                .contains(secondException.message ?: "")
+        )
+
+    }
 }
